@@ -31,8 +31,4 @@ public class Game {
     @Column
     private GAME_RESULT result;
 
-    @ManyToOne
-    @JoinColumn
-    private Tournament tournament;
-
 }

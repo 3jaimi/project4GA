@@ -25,5 +25,5 @@ public class Tournament {
     private Admin organiser;
 
     @OneToMany(mappedBy = "tournament")
-    private List<Game> games;
+    private List<TournamentGame> games;
 }

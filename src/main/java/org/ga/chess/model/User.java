@@ -10,6 +10,7 @@ import org.ga.chess.ENUM.USER_TYPE;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = "users")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
