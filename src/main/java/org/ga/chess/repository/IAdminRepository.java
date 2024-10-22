@@ -3,9 +3,11 @@ package org.ga.chess.repository;
 import org.ga.chess.model.Admin;
 import org.ga.chess.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-public interface IAdminRepository extends JpaRepository<Long, Admin> {
+@Repository
+public interface IAdminRepository extends JpaRepository< Admin, Long> {
     Optional<Admin> findByEmail (String Email);
 }

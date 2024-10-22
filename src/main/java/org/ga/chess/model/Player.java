@@ -15,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Setter
-public class Player extends User{
+public class  Player extends User{
 
     @Column
     private Integer rating;
