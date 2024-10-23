@@ -61,6 +61,10 @@ public class TournamentService {
         return new ResponseEntity<>(tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName())), HttpStatusCode.valueOf(200));
     }
 
+    public ResponseEntity<?> getAllNotStartedTournaments(){
+        return new ResponseEntity<>(tournamentRepository.findByStatus(TOURNAMENT_STATUS.PENDING_START), HttpStatusCode.valueOf(200));
+
+    }
 
     public ResponseEntity<?> joinTournament(Long id) {
         if (UserService.getCurrentLoggedInUser().getUserType().equals(USER_TYPE.PLAYER)) {
