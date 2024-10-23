@@ -24,7 +24,7 @@ public class User {
     @Column
     private USER_TYPE userType;
 
-    @Column
+    @Column(unique = true)
     private String email;
 
     @Column
