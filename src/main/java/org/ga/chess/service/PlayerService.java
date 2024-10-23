@@ -21,7 +21,7 @@ public class PlayerService {
     private IUserRepository userRepository;
     
     public ResponseEntity<?> editPlayer(Player player){
-        Player playerInDb=playerRepository.findByEmail("temp").orElseThrow(()->new NotFoundException(Player.class.getSimpleName()));
+        Player playerInDb=playerRepository.findByEmail(UserService.getCurrentLoggedInUser().getEmail()).orElseThrow(()->new NotFoundException(Player.class.getSimpleName()));
         if (!(player.getEmail().isEmpty()||playerInDb.getEmail().equals(player.getEmail()))){
             if(userRepository.findByEmail(player.getEmail()).isPresent()) throw new AlreadyExistsException(User.class.getSimpleName());
             playerInDb.setEmail(player.getEmail());
@@ -31,7 +31,7 @@ public class PlayerService {
     }
 
     public ResponseEntity<?> deletePlayer(){
-        playerRepository.deleteById(0L);
+        playerRepository.deleteById(UserService.getCurrentLoggedInUser().getUserId());
         return new ResponseEntity<>(HttpStatusCode.valueOf(200));
     }
 }

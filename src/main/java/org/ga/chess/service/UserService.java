@@ -10,9 +10,19 @@ import org.ga.chess.model.User;
 import org.ga.chess.repository.IAdminRepository;
 import org.ga.chess.repository.IPlayerRepository;
 import org.ga.chess.repository.IUserRepository;
+import org.ga.chess.requestUtil.LoginRequest;
+import org.ga.chess.requestUtil.SignUpRequest;
+import org.ga.chess.security.JwtUtil;
+import org.ga.chess.security.MyUserDetails;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,10 +34,21 @@ public class UserService {
     private IAdminRepository adminRepository;
     @Autowired
     private IPlayerRepository playerRepository;
+    @Autowired
+    @Lazy
+    private JwtUtil jwtUtils;
+    @Autowired
+    @Lazy
+    private AuthenticationManager authenticationManager;
+    @Autowired
+    @Lazy
+    private MyUserDetails myUserDetails;
 
-    public ResponseEntity<?> createUser(User user){
-        if (userRepository.findByEmail(user.getEmail()).isPresent())
+    public ResponseEntity<?> createUser(SignUpRequest signUpRequest){
+        if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent())
             throw new AlreadyExistsException(User.class.getSimpleName());
+        User user= new User(null,signUpRequest.getUserType(),signUpRequest.getEmail(), signUpRequest.getPassword());
+        user.setPassword(new BCryptPasswordEncoder().encode(signUpRequest.getPassword()));
         if (user.getUserType().equals(USER_TYPE.ADMIN)){
             return new ResponseEntity<>(adminRepository.save(new Admin(user.getUserId(),user.getUserType(),user.getEmail(), user.getPassword())), HttpStatusCode.valueOf(200));
         }
@@ -70,5 +91,32 @@ public class UserService {
 
     public ResponseEntity<?>getAllPlayers(){
         return new ResponseEntity<>(playerRepository.findAll(),HttpStatusCode.valueOf(200));
+    }
+
+    public ResponseEntity<?> loginUser(LoginRequest loginRequest) {
+        if ((loginRequest.getEmail()!=null&&loginRequest.getPassword()!=null)){
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword());
+            try {
+                Authentication authentication = authenticationManager
+                        .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                myUserDetails = (MyUserDetails) authentication.getPrincipal();
+                final String JWT = jwtUtils.generateToken(myUserDetails);
+                return new ResponseEntity<>("Token: ".concat(JWT),HttpStatusCode.valueOf(200));
+            } catch (Exception e) {
+                return new ResponseEntity<>(HttpStatusCode.valueOf(401));
+            }
+        }
+        else {
+            return new ResponseEntity<>("Bad Request",HttpStatusCode.valueOf(400));
+        }
+    }
+
+    public static User getCurrentLoggedInUser(){
+        MyUserDetails userDetails=(MyUserDetails)SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return userDetails.getUser();
+    }
+    public static USER_TYPE getLoggedInUserType(){
+        return getCurrentLoggedInUser().getUserType();
     }
 }

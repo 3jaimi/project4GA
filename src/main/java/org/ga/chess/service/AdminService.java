@@ -28,7 +28,7 @@ public class AdminService {
 
 
     public ResponseEntity<?>editAdmin(Admin admin){
-        Admin adminInDb=adminRepository.findByEmail("temp").orElseThrow(()->new NotFoundException(Admin.class.getSimpleName()));
+        Admin adminInDb=adminRepository.findByEmail(UserService.getCurrentLoggedInUser().getEmail()).orElseThrow(()->new NotFoundException(Admin.class.getSimpleName()));
         if (!(admin.getEmail().isEmpty()||adminInDb.getEmail().equals(admin.getEmail()))){
             if(userRepository.findByEmail(admin.getEmail()).isPresent()) throw new AlreadyExistsException(User.class.getSimpleName());
             adminInDb.setEmail(admin.getEmail());
@@ -39,7 +39,7 @@ public class AdminService {
     }
 
     public ResponseEntity<?> deleteAdmin(){
-        adminRepository.deleteById(0L);
+        adminRepository.deleteById(UserService.getCurrentLoggedInUser().getUserId());
         return new ResponseEntity<>(HttpStatusCode.valueOf(200));
     }
 
