@@ -69,29 +69,6 @@ public class UserService {
         return new ResponseEntity<>(userRepository.findAll(),HttpStatusCode.valueOf(200));
     }
 
-    public ResponseEntity<?> getAdmin(String email){
-        return new ResponseEntity<>(adminRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName())), HttpStatusCode.valueOf(200));
-    }
-
-    public ResponseEntity<?> getAdmin(Long id){
-        return new ResponseEntity<>(adminRepository.findById(id).orElseThrow(()->new NotFoundException(User.class.getSimpleName())),HttpStatusCode.valueOf(200));
-    }
-
-    public ResponseEntity<?>getAllAdmins(){
-        return new ResponseEntity<>(adminRepository.findAll(),HttpStatusCode.valueOf(200));
-    }
-
-    public ResponseEntity<?> getPlayer(String email){
-        return new ResponseEntity<>(playerRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName())), HttpStatusCode.valueOf(200));
-    }
-
-    public ResponseEntity<?> getPlayer(Long id){
-        return new ResponseEntity<>(playerRepository.findById(id).orElseThrow(()->new NotFoundException(User.class.getSimpleName())),HttpStatusCode.valueOf(200));
-    }
-
-    public ResponseEntity<?>getAllPlayers(){
-        return new ResponseEntity<>(playerRepository.findAll(),HttpStatusCode.valueOf(200));
-    }
 
     public ResponseEntity<?> loginUser(LoginRequest loginRequest) {
         if ((loginRequest.getEmail()!=null&&loginRequest.getPassword()!=null)){

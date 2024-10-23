@@ -1,7 +1,7 @@
 package org.ga.chess.service;
 
 import lombok.Setter;
-import org.ga.chess.ENUM.STATUS;
+import org.ga.chess.ENUM.USER_STATUS;
 import org.ga.chess.ENUM.USER_TYPE;
 import org.ga.chess.exception.AlreadyExistsException;
 import org.ga.chess.exception.NotFoundException;
@@ -26,6 +26,17 @@ public class AdminService {
     @Autowired
     private IUserRepository userRepository;
 
+    public ResponseEntity<?> getAdmin(String email){
+        return new ResponseEntity<>(adminRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName())), HttpStatusCode.valueOf(200));
+    }
+
+    public ResponseEntity<?> getAdmin(Long id){
+        return new ResponseEntity<>(adminRepository.findById(id).orElseThrow(()->new NotFoundException(User.class.getSimpleName())),HttpStatusCode.valueOf(200));
+    }
+
+    public ResponseEntity<?>getAllAdmins(){
+        return new ResponseEntity<>(adminRepository.findAll(),HttpStatusCode.valueOf(200));
+    }
 
     public ResponseEntity<?>editAdmin(Admin admin){
         Admin adminInDb=adminRepository.findByEmail(UserService.getCurrentLoggedInUser().getEmail()).orElseThrow(()->new NotFoundException(Admin.class.getSimpleName()));
@@ -52,25 +63,25 @@ public class AdminService {
 
     public ResponseEntity<?> deactivatePlayer(String email){
        Player tempPLayer = playerRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName()));
-       tempPLayer.setStatus(STATUS.INACTIVE);
+       tempPLayer.setStatus(USER_STATUS.INACTIVE);
        return new ResponseEntity<>(playerRepository.save(tempPLayer),HttpStatusCode.valueOf(200));
     }
 
     public ResponseEntity<?> deactivatePlayer(Long id){
         Player tempPLayer = playerRepository.findById(id).orElseThrow(()->new NotFoundException(User.class.getSimpleName()));
-        tempPLayer.setStatus(STATUS.INACTIVE);
+        tempPLayer.setStatus(USER_STATUS.INACTIVE);
         return new ResponseEntity<>(playerRepository.save(tempPLayer),HttpStatusCode.valueOf(200));
     }
 
     public ResponseEntity<?> activatePlayer(String email){
         Player tempPLayer = playerRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName()));
-        tempPLayer.setStatus(STATUS.ACTIVE);
+        tempPLayer.setStatus(USER_STATUS.ACTIVE);
         return new ResponseEntity<>(playerRepository.save(tempPLayer),HttpStatusCode.valueOf(200));
     }
 
     public ResponseEntity<?> activatePlayer(Long id){
         Player tempPLayer = playerRepository.findById(id).orElseThrow(()->new NotFoundException(User.class.getSimpleName()));
-        tempPLayer.setStatus(STATUS.ACTIVE);
+        tempPLayer.setStatus(USER_STATUS.ACTIVE);
         return new ResponseEntity<>(playerRepository.save(tempPLayer),HttpStatusCode.valueOf(200));
     }
 

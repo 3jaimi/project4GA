@@ -1,5 +1,5 @@
 package org.ga.chess.ENUM;
 
-public enum STATUS {
+public enum USER_STATUS {
     ACTIVE,INACTIVE
 }

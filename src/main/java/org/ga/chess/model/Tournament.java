@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.ga.chess.ENUM.TOURNAMENT_STATUS;
 
 import java.util.List;
 
@@ -30,5 +31,11 @@ public class Tournament {
 
     @Column
     private Integer numberOfPlayers;
+
+    @Column
+    private Integer numberOfPlayersJoined;
+
+    @Column
+    private TOURNAMENT_STATUS status;
 
 }
