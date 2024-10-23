@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.ga.chess.ENUM.STATUS;
 import org.ga.chess.ENUM.USER_TYPE;
 
 import java.util.List;
@@ -32,6 +33,9 @@ public class  Player extends User{
 
     @Column
     private Integer rating;
+
+    @Column
+    private STATUS status;
 
     @OneToMany(mappedBy = "black")
     private List<Game> blackGames;
