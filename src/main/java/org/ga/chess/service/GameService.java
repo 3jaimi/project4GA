@@ -13,9 +13,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 @Service
 public class GameService {
@@ -86,20 +84,37 @@ public class GameService {
                         playerRepository.save(player);
                     }
             }
-            return new ResponseEntity<>(gameRepository.save(game),HttpStatusCode.valueOf(200));
+            gameRepository.save(game);
+            HashMap<String,String> gameResultMap=new HashMap<>();
+            gameResultMap.put("Result:",game.getResult().toString());
+            gameResultMap.put("Players","");
+            gameResultMap.put("Black:",game.getBlack().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
+            gameResultMap.put("White:",game.getWhite().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
+            return new ResponseEntity<>(gameResultMap,HttpStatusCode.valueOf(200));
         }
         return new ResponseEntity<>(HttpStatusCode.valueOf(401));
     }
 
     private Player[] processGameResult(Player winner, Player loser, GAME_RESULT result){
         int change=0;
+        int diffEffect=0;
         if (!result.equals(GAME_RESULT.DRAW))
-            change+=8;
+            change += 8;
         for (int i=Math.abs(winner.getRating()-loser.getRating());(i-24)>=0;i-=25){
-            change++;
+            diffEffect++;
         }
-        winner.setRating(winner.getRating()+change);
-        loser.setRating(loser.getRating()-change);
+
+            if (winner.getRating()>= loser.getRating()){
+                winner.setRating(winner.getRating()+change-diffEffect);
+                if (change-diffEffect>0)
+                    loser.setRating(loser.getRating()-change+diffEffect);
+                else
+                    loser.setRating(loser.getRating()-1);
+            }
+            else {
+                winner.setRating(winner.getRating()+change+diffEffect);
+                loser.setRating(loser.getRating()-change-diffEffect);
+            }
         return new Player[]{winner,loser};
     }
 }
