@@ -12,5 +12,10 @@ import org.springframework.stereotype.Component;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginRequest {
-    private String email,password;
+    private String email,password,verificationToken;
+
+    public LoginRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
 }

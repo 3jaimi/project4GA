@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.ga.chess.ENUM.USER_STATUS;
 import org.ga.chess.ENUM.USER_TYPE;
+import org.ga.chess.model.Player;
 import org.ga.chess.model.User;
 import org.ga.chess.repository.IPlayerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,14 +13,17 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
-@Setter
 public class MyUserDetails implements UserDetails {
     @Getter
     private User user;
-    @Autowired
+
     private IPlayerRepository playerRepository;
 
+    public MyUserDetails(User user, IPlayerRepository playerRepository) {
+        this.user = user; this.playerRepository=playerRepository;
+    }
     public MyUserDetails(User user) {
         this.user = user;
     }
@@ -47,7 +51,7 @@ public class MyUserDetails implements UserDetails {
     @Override
     public boolean isAccountNonLocked() {
         if (user.getUserType().equals(USER_TYPE.ADMIN)) return true;
-        return playerRepository.findByEmail(getUsername()).get().getStatus().equals(USER_STATUS.ACTIVE);
+        return (playerRepository.findByEmail(getUsername()).get().getStatus().equals(USER_STATUS.ACTIVE));
     }
 
     @Override

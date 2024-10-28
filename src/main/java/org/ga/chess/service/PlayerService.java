@@ -1,19 +1,20 @@
 package org.ga.chess.service;
 
 import lombok.Setter;
-import org.ga.chess.ENUM.CHALLENGE_STATUS;
-import org.ga.chess.ENUM.PLAYER_COLOUR;
+import org.ga.chess.ENUM.USER_STATUS;
 import org.ga.chess.exception.AlreadyExistsException;
 import org.ga.chess.exception.NotFoundException;
-import org.ga.chess.model.Challenge;
 import org.ga.chess.model.Player;
 import org.ga.chess.model.User;
-import org.ga.chess.repository.IChallengeRepository;
 import org.ga.chess.repository.IPlayerRepository;
 import org.ga.chess.repository.IUserRepository;
+import org.ga.chess.security.JwtUtil;
+import org.ga.chess.security.MyUserDetails;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +24,15 @@ public class PlayerService {
     private IPlayerRepository playerRepository;
     @Autowired
     private IUserRepository userRepository;
+    @Autowired
+    @Lazy
+    private JwtUtil jwtUtils;
+    @Autowired
+    @Lazy
+    private AuthenticationManager authenticationManager;
+    @Autowired
+    @Lazy
+    private MyUserDetails myUserDetails;
 
     public ResponseEntity<?> getPlayer(String email){
         return new ResponseEntity<>(playerRepository.findByEmail(email).orElseThrow(()->new NotFoundException(User.class.getSimpleName())), HttpStatusCode.valueOf(200));
@@ -50,5 +60,6 @@ public class PlayerService {
         playerRepository.deleteById(UserService.getCurrentLoggedInUser().getUserId());
         return new ResponseEntity<>(HttpStatusCode.valueOf(200));
     }
+
 
 }

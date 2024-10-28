@@ -38,7 +38,8 @@ public class SecurityConfiguration {
         httpSecurity.authorizeHttpRequests(c->
                 c.requestMatchers(
                                 "/api/users/login",
-                                "/api/users/signup"
+                                "/api/users/signup",
+                        "/api/users/*"
                         ).permitAll()
                         .anyRequest().authenticated());
         httpSecurity.sessionManagement(

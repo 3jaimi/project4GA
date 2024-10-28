@@ -19,13 +19,14 @@ import java.util.List;
 @Setter
 public class  Player extends User{
 
-    public Player(Long userId, USER_TYPE userType, String email, String password, Integer rating) {
-        super(userId, userType, email, password);
+    public Player(Long userId, USER_TYPE userType, String email, String password, Integer rating, USER_STATUS status) {
+        super(userId, userType, email, password, null);
         this.rating = rating;
+        this.status=status;
     }
 
     public Player(Long userId, USER_TYPE userType, String email, String password, Integer rating, List<Game> blackGames, List<Game> whiteGames) {
-        super(userId, userType, email, password);
+        super(userId, userType, email, password, null);
         this.rating = rating;
         this.blackGames = blackGames;
         this.whiteGames = whiteGames;

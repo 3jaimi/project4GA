@@ -17,11 +17,11 @@ import java.util.List;
 public class Admin extends User{
 
     public Admin(Long userId, USER_TYPE userType, String email, String password) {
-        super(userId, userType, email, password);
+        super(userId, userType, email, password, null);
     }
 
     public Admin(Long userId, USER_TYPE userType, String email, String password, List<Tournament> tournaments) {
-        super(userId, userType, email, password);
+        super(userId, userType, email, password, null);
         this.tournaments = tournaments;
     }
 
