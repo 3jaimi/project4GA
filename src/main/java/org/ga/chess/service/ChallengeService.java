@@ -48,7 +48,7 @@ public class ChallengeService {
         if (challenge.getStatus().equals(CHALLENGE_STATUS.PENDING) && challenge.getChallengee().getEmail().equals(UserService.getCurrentLoggedInUser().getEmail())){
             challenge.setStatus(status);
             if (status.equals(CHALLENGE_STATUS.ACCEPTED)) {
-                Game game=null;
+                Game game;
                 if (challenge.getChallengeeColour().equals(PLAYER_COLOUR.BLACK))
                     game= new Game(null,challenge.getChallengee(),challenge.getChallenger(), GAME_RESULT.NOT_PLAYED );
                 else
