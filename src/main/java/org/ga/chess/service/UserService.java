@@ -127,8 +127,5 @@ public class UserService {
         MyUserDetails userDetails=(MyUserDetails)SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userDetails.getUser();
     }
-    public static USER_TYPE getLoggedInUserType(){
-        return getCurrentLoggedInUser().getUserType();
-    }
 
 }

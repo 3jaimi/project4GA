@@ -205,7 +205,7 @@ public class TournamentService {
     public ResponseEntity<?> playTournament(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
-        if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()) {
+        if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()&&tournament.getStatus().equals(TOURNAMENT_STATUS.PENDING_START)) {
             ArrayList<HashMap<String, String>> gameResults = new ArrayList<>();
             List<TournamentGame> tournamentGames = tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament);
             int index = 0;
@@ -224,7 +224,8 @@ public class TournamentService {
                     return new ResponseEntity<>( HttpStatusCode.valueOf(400));
                 }
             }
-
+            tournament.setStatus(TOURNAMENT_STATUS.STARTED);
+            tournamentRepository.save(tournament);
             return new ResponseEntity<>(gameResults, HttpStatusCode.valueOf(200));
         } else {
             return new ResponseEntity<>("Tournament is not full", HttpStatusCode.valueOf(401));

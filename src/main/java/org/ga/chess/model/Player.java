@@ -1,5 +1,6 @@
 package org.ga.chess.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -38,15 +39,19 @@ public class  Player extends User{
     @Column
     private USER_STATUS status;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "black")
     private List<Game> blackGames;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "white")
     private List<Game> whiteGames;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "challenger")
     private List<Challenge> challengesInitiated;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "challengee")
     private List<Challenge> challengesReceived;
 
