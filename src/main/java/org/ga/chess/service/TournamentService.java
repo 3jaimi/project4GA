@@ -1,6 +1,7 @@
 package org.ga.chess.service;
 
 
+import lombok.Getter;
 import lombok.Setter;
 import org.ga.chess.ENUM.GAME_RESULT;
 import org.ga.chess.ENUM.TOURNAMENT_STATUS;
@@ -12,16 +13,29 @@ import org.ga.chess.model.Tournament;
 import org.ga.chess.model.TournamentGame;
 import org.ga.chess.model.util.TournamentGameId;
 import org.ga.chess.repository.*;
+import org.ga.chess.service.util.ChessThread;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.concurrent.DelegatingSecurityContextRunnable;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 @Setter
+@Getter
 public class TournamentService {
     @Autowired
     private ITournamentRepository tournamentRepository;
@@ -35,12 +49,12 @@ public class TournamentService {
     private IPlayerRepository playerRepository;
     @Autowired
     private GameService gameService;
-
+    private final ReadWriteLock gameLock = new ReentrantReadWriteLock();
     public ResponseEntity<?> createTournament(Integer numOfPlayers) {
         if (UserService.getCurrentLoggedInUser().getUserType().equals(USER_TYPE.ADMIN)) {
             Tournament tournament = new Tournament(null, adminRepository.findByEmail(UserService.getCurrentLoggedInUser().getEmail()).get(), null, numOfPlayers, 0, TOURNAMENT_STATUS.PENDING_START);
             Tournament savedTournament = tournamentRepository.save(tournament);
-            if (generateTournamentGames(generateTournamentGamesNum(tournament.getNumberOfPlayers()),tournament))
+            if (generateTournamentGames(generateTournamentGamesNum(savedTournament.getNumberOfPlayers()),savedTournament))
                 return new ResponseEntity<>(HttpStatusCode.valueOf(200));
             else
                 return new ResponseEntity<>(HttpStatusCode.valueOf(500));
@@ -50,16 +64,16 @@ public class TournamentService {
 
     private int generateTournamentGamesNum(int numOfPlayers) {
         int returnedVal = 0;
-        for (int i = numOfPlayers; i < 1; ) {
+        for (int i = numOfPlayers/2; i >= 1; i /= 2) {
             returnedVal += i;
-            i /= 2;
         }
+        System.out.println(returnedVal);
         return returnedVal;
     }
 
     private boolean generateTournamentGames(int numOfPlayers, Tournament tournament){
         boolean flag=false;
-        for (int i = generateTournamentGamesNum(numOfPlayers); i > 0; i--) {
+        for (int i = numOfPlayers; i > 0; i--) {
             Game game = new Game(null, null, null, GAME_RESULT.NOT_PLAYED);
             Game savedGame = gameRepository.save(game);
             TournamentGameId gameId = new TournamentGameId(tournament.getId(), savedGame.getId());
@@ -83,44 +97,57 @@ public class TournamentService {
 
     }
 
-    public ResponseEntity<?> advanceInTournament(Long id, Player lastGameWinner) {
-        if (lastGameWinner.getUserType().equals(USER_TYPE.PLAYER)) {
-            Tournament tournament = tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
-            if (tournament.getNumberOfPlayersJoined() < tournament.getNumberOfPlayers()) {
-                for (TournamentGame tgame : tournament.getGames()) {
-                    if (tgame.getGame().getWhite() == null) {
-                        Game game = tgame.getGame();
-                        game.setWhite(playerRepository.findById(UserService.getCurrentLoggedInUser().getUserId()).get());
-                        gameRepository.save(game);
-                        return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+    public ResponseEntity<?> advanceInTournament(Long id, Player lastGameWinner, boolean newJoinee) {
+            if (lastGameWinner.getUserType().equals(USER_TYPE.PLAYER)) {
+                Tournament tournament = tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
+                if (tournament.getNumberOfPlayersJoined() <= tournament.getNumberOfPlayers()) {
+                    if (newJoinee&&tournament.getNumberOfPlayersJoined()+1<= tournament.getNumberOfPlayers()) {
+                        tournament.setNumberOfPlayersJoined(tournament.getNumberOfPlayersJoined()+1);
+                        tournamentRepository.save(tournament);
+                    } else if (newJoinee&&tournament.getNumberOfPlayersJoined()+1> tournament.getNumberOfPlayers()) {
+                        return new ResponseEntity<>(HttpStatusCode.valueOf(401));
                     }
-                    else if (tgame.getGame().getBlack() == null) {
-                        Game game = tgame.getGame();
-                        game.setBlack(playerRepository.findById(UserService.getCurrentLoggedInUser().getUserId()).get());
-                        gameRepository.save(game);
-                        return new ResponseEntity<>(HttpStatusCode.valueOf(200));
-                    }
-                }
-            }
 
-        }
+                    for (TournamentGame tgame : tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament)) {
+//                        gameLock.writeLock().lock();
+//                        try {
+                            if (tgame.getGame().getWhite() == null) {
+                                Game game = tgame.getGame();
+                                game.setWhite(lastGameWinner);
+                                gameRepository.save(game);
+                                return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+                            } else if (tgame.getGame().getBlack() == null) {
+                                Game game = tgame.getGame();
+                                game.setBlack(lastGameWinner);
+                                gameRepository.save(game);
+                                return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+                            }
+//                        }
+//                        finally {
+//                            gameLock.writeLock().unlock();
+//                        }
+                    }
+
+                }
+
+            }
         return new ResponseEntity<>(HttpStatusCode.valueOf(401));
     }
     public ResponseEntity<?> joinTournament(Long id) {
-        Player player=playerRepository.findById(UserService.getCurrentLoggedInUser().getUserId()).get();
-        return advanceInTournament(id,player);
+        Player player=playerRepository.findById(UserService.getCurrentLoggedInUser().getUserId()).orElseThrow(()->new NotFoundException(Player.class.getSimpleName()));
+        return advanceInTournament(id,player, true);
     }
 
-    public ResponseEntity<?> playTournament(Long id){
+    public ResponseEntity<?> playTournamentWithoutThreads(Long id){
         Tournament tournament = tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
         if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()) {
             ArrayList<HashMap<String,String>> gameResults=new ArrayList<>();
-            for (TournamentGame tgame : tournament.getGames()) {
+            for (TournamentGame tgame : tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament)) {
                 GAME_RESULT gameResult=tgame.getGame().getResult();
                 while(gameResult.equals(GAME_RESULT.NOT_PLAYED)){
                     Object gameResponse=gameService.playGame(tgame.getGame().getId()).getBody();
                     HashMap<String,String> gameResponseMap=(HashMap<String,String>)gameResponse;
-                    String result=gameResponseMap.get("Result:");
+                    String result=gameResponseMap.get("Result");
                     if (result.equals(GAME_RESULT.DRAW)){
                         Player black=tgame.getGame().getBlack();
                         tgame.getGame().setBlack(tgame.getGame().getWhite());
@@ -128,13 +155,14 @@ public class TournamentService {
                     }
                     else{
                         if (result.equals(GAME_RESULT.BLACK_WON)){
-                        advanceInTournament(id,tgame.getGame().getBlack());
-                        gameResult=GAME_RESULT.BLACK_WON;
-
+                            advanceInTournament(id,tgame.getGame().getBlack(),false);
+                            gameResult=GAME_RESULT.BLACK_WON;
+                            gameResponseMap.put("Result",gameResult.toString());
                         }
                         else {
-                            advanceInTournament(id, tgame.getGame().getWhite());
+                            advanceInTournament(id, tgame.getGame().getWhite(),false);
                             gameResult=GAME_RESULT.WHITE_WON;
+                            gameResponseMap.put("Result",gameResult.toString());
                         }
                         gameResults.add(gameResponseMap);
                     }
@@ -143,6 +171,62 @@ public class TournamentService {
             return new ResponseEntity<>(gameResults,HttpStatusCode.valueOf(200));
         }
         else{
+            return new ResponseEntity<>("Tournament is not full", HttpStatusCode.valueOf(401));
+        }
+    }
+
+    public ResponseEntity<?> playTournamentDeprecated(Long id){
+        Tournament tournament = tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
+        if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()) {
+            ArrayList<HashMap<String,String>> gameResults=new ArrayList<>();
+            List<TournamentGame> tournamentGames=tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament);
+            int index=0;
+            for (int i=(tournament.getNumberOfPlayers()/2);i>=1;i/=2) {
+                for (int j=0; j<i; j++){
+                    TournamentGame temp=tournamentGames.get(index+j);
+                    SecurityContext context=SecurityContextHolder.getContext();
+                    Runnable task = new DelegatingSecurityContextRunnable(new ChessThread(this,temp,gameResults),context );
+                    new Thread(task).start();
+                }
+                index+=i;
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return new ResponseEntity<>(gameResults,HttpStatusCode.valueOf(200));
+        }
+        else{
+            return new ResponseEntity<>("Tournament is not full", HttpStatusCode.valueOf(401));
+        }
+    }
+
+    public ResponseEntity<?> playTournament(Long id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
+        if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()) {
+            ArrayList<HashMap<String, String>> gameResults = new ArrayList<>();
+            List<TournamentGame> tournamentGames = tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament);
+            int index = 0;
+            for (int i = (tournament.getNumberOfPlayers() / 2); i >= 1; i /= 2) {
+                ExecutorService executorService = Executors.newFixedThreadPool(i);
+                List<Callable<Object>> tasks = new ArrayList<>();
+                for (int j = 0; j < i; j++) {
+                    TournamentGame temp = tournamentGames.get(index + j);
+                    tasks.add(Executors.callable(new DelegatingSecurityContextRunnable(new ChessThread(this, temp, gameResults), SecurityContextHolder.getContext())));
+                }
+                index += i;
+                try {
+                    executorService.invokeAll(tasks);
+                    executorService.shutdown();
+                } catch (InterruptedException e ) {
+                    return new ResponseEntity<>( HttpStatusCode.valueOf(400));
+                }
+            }
+
+            return new ResponseEntity<>(gameResults, HttpStatusCode.valueOf(200));
+        } else {
             return new ResponseEntity<>("Tournament is not full", HttpStatusCode.valueOf(401));
         }
     }

@@ -2,6 +2,7 @@ package org.ga.chess.service;
 
 
 import org.ga.chess.ENUM.GAME_RESULT;
+import org.ga.chess.ENUM.USER_TYPE;
 import org.ga.chess.exception.NotFoundException;
 import org.ga.chess.model.Game;
 import org.ga.chess.model.Player;
@@ -59,7 +60,7 @@ public class GameService {
 
     public ResponseEntity<?> playGame(Long id){
         Game game=gameRepository.findById(id).orElseThrow(()->new NotFoundException(Game.class.getSimpleName()));
-        if ((UserService.getCurrentLoggedInUser().getEmail().equals(game.getBlack().getEmail())||UserService.getCurrentLoggedInUser().getEmail().equals(game.getWhite().getEmail()))&&game.getResult().equals(GAME_RESULT.NOT_PLAYED)){
+        if (((UserService.getCurrentLoggedInUser().getEmail().equals(game.getBlack().getEmail())||UserService.getCurrentLoggedInUser().getEmail().equals(game.getWhite().getEmail())&&game.getResult().equals(GAME_RESULT.NOT_PLAYED))||UserService.getCurrentLoggedInUser().getUserType().equals(USER_TYPE.ADMIN))){
             GAME_RESULT [] resultArr  = new GAME_RESULT[]{GAME_RESULT.DRAW,GAME_RESULT.BLACK_WON,GAME_RESULT.WHITE_WON};
             Random random = new Random();
             int result=random.nextInt(3);
@@ -86,10 +87,9 @@ public class GameService {
             }
             gameRepository.save(game);
             HashMap<String,String> gameResultMap=new HashMap<>();
-            gameResultMap.put("Result:",game.getResult().toString());
-            gameResultMap.put("Players","");
-            gameResultMap.put("Black:",game.getBlack().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
-            gameResultMap.put("White:",game.getWhite().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
+            gameResultMap.put("Result",game.getResult().toString());
+            gameResultMap.put("Black",game.getBlack().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
+            gameResultMap.put("White",game.getWhite().getEmail().concat(", ").concat(game.getWhite().getRating().toString()));
             return new ResponseEntity<>(gameResultMap,HttpStatusCode.valueOf(200));
         }
         return new ResponseEntity<>(HttpStatusCode.valueOf(401));

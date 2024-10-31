@@ -36,4 +36,6 @@ public class TournamentController {
     public ResponseEntity<?> playTournament(@PathVariable Long id) {
         return tournamentService.playTournament(id);
     }
+
+
 }

@@ -13,4 +13,5 @@ import java.util.Optional;
 @Repository
 public interface ITournamentGameRepository extends JpaRepository<TournamentGame, TournamentGameId > {
     Optional<TournamentGame> findByGame(Game game);
+    List<TournamentGame> findByTournamentOrderByGame_IdAsc(Tournament tournament);
 }

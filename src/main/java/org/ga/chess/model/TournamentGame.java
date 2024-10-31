@@ -28,5 +28,9 @@ public class TournamentGame {
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
+    @Override
+    public String toString() {
+        return getGame().getId().toString();
+    }
 }
 
