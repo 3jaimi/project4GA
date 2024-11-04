@@ -16,10 +16,10 @@ public class GameController {
     @Autowired
     private GameService gameService;
 
-    @PostMapping("/create")
-    public ResponseEntity<Game> createGame(@RequestBody Game game) {
-        return gameService.createGame(game);
-    }
+//    @PostMapping("/create")
+//    public ResponseEntity<Game> createGame(@RequestBody Game game) {
+//        return gameService.createGame(game);
+//    }
 
     @GetMapping("/{id}")
     public ResponseEntity<Game> getGameById(@PathVariable Long id) {
@@ -42,7 +42,7 @@ public class GameController {
     }
 
     @PutMapping("/play/{id}")
-    public ResponseEntity<?> playGame(@PathVariable Long id) {
-        return gameService.playGame(id);
+    public ResponseEntity<?> playAndSaveIndividualGame(@PathVariable Long id) {
+        return gameService.playAndSaveIndividualGame(id);
     }
 }

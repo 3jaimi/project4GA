@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.ga.chess.ENUM.GAME_RESULT;
+import org.ga.chess.model.Game;
 import org.ga.chess.model.Player;
 import org.ga.chess.model.TournamentGame;
 
@@ -16,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -30,11 +32,13 @@ public class ChessThread extends Thread{
     private ArrayList<HashMap<String,String>> gameResults;
     private ReadWriteLock gameLock = new ReentrantReadWriteLock();
     private boolean isFinal;
+    private CopyOnWriteArrayList<Boolean> flags;
 
-    public ChessThread(TournamentService tournamentService, TournamentGame tournamentGame, ArrayList<HashMap<String, String>> gameResults) {
+    public ChessThread(TournamentService tournamentService, TournamentGame tournamentGame, ArrayList<HashMap<String, String>> gameResults,  CopyOnWriteArrayList<Boolean> flags) {
         this.tournamentService = tournamentService;
         this.tournamentGame = tournamentGame;
         this.gameResults = gameResults;
+        this.flags=flags;
     }
 
     @Override
@@ -47,31 +51,33 @@ public class ChessThread extends Thread{
         try{
             GAME_RESULT gameResult = tournamentGame.getGame().getResult();
             while (gameResult.equals(GAME_RESULT.NOT_PLAYED)) {
-                Object gameResponse = tournamentService.getGameService().playGame(tournamentGame.getGame().getId()).getBody();
-                HashMap<String, String> gameResponseMap = (HashMap<String, String>) gameResponse;
-                String result = gameResponseMap.get("Result");
-                System.out.println(result);
-                if (result.equals(GAME_RESULT.DRAW.toString())) {
+                Game game = tournamentService.getGameService().playGame(tournamentGame.getGame().getId());
+                GAME_RESULT result=game.getResult();
+//                System.out.println(game.getId()+"  "+result.toString());
+                if (result.equals(GAME_RESULT.DRAW)) {
                     Player black = tournamentGame.getGame().getBlack();
                     tournamentGame.getGame().setBlack(tournamentGame.getGame().getWhite());
                     tournamentGame.getGame().setWhite(black);
                 } else{
-                    if (result.equals(GAME_RESULT.BLACK_WON.toString())) {
+                    if (result.equals(GAME_RESULT.BLACK_WON)) {
                         if (tournamentGame.getGame().getBlack()!=null)
                             tournamentService.advanceInTournament(tournamentGame.getTournament().getId(), tournamentGame.getGame().getBlack(), false);
                         gameResult = GAME_RESULT.BLACK_WON;
-                        gameResponseMap.put("Result", gameResult.toString());
+
                     } else {
                         if (tournamentGame.getGame().getWhite()!=null)
                             tournamentService.advanceInTournament(tournamentGame.getTournament().getId(), tournamentGame.getGame().getWhite(), false);
                         gameResult = GAME_RESULT.WHITE_WON;
-                        gameResponseMap.put("Result", gameResult.toString());
                     }
+
+                    HashMap<String,String> gameResponseMap;
+                    Object gameResponse=tournamentService.getGameService().saveGame(game).getBody();
+                    gameResponseMap=(HashMap<String,String>)gameResponse;
                     gameResults.add(gameResponseMap);
+                    flags.add(true);
                 }
             }
-        }
-        finally {
+        } finally {
             gameLock.writeLock().unlock();
         }
 

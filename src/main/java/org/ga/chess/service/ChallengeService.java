@@ -53,7 +53,8 @@ public class ChallengeService {
                     game= new Game(null,challenge.getChallengee(),challenge.getChallenger(), GAME_RESULT.NOT_PLAYED );
                 else
                     game= new Game(null,challenge.getChallenger(),challenge.getChallengee(), GAME_RESULT.NOT_PLAYED );
-                gameRepository.save(game);
+
+                return new ResponseEntity<>(gameRepository.save(game),HttpStatusCode.valueOf(200));
             }
             return new ResponseEntity<>(challengeRepository.save(challenge),HttpStatusCode.valueOf(200));
         }

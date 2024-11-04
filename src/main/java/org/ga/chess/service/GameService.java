@@ -42,11 +42,14 @@ public class GameService {
     }
 
     public ResponseEntity<?> editGame(Long id,Game game){
-        Game inDb=gameRepository.findById(id).orElseThrow(()->new NotFoundException(Game.class.getSimpleName()));
-        if (inDb.getBlack()==null&&game.getBlack()!=null)inDb.setBlack(game.getBlack());
-        if (inDb.getWhite()==null&&game.getWhite()!=null)inDb.setWhite(game.getWhite());
-        if (inDb.getResult().equals(GAME_RESULT.NOT_PLAYED)&&game.getResult()!=null)inDb.setResult(game.getResult());
-        return new ResponseEntity<>(gameRepository.save(inDb), HttpStatusCode.valueOf(200));
+        if (UserService.getCurrentLoggedInUser().getUserType().equals(USER_TYPE.ADMIN)){
+            Game inDb=gameRepository.findById(id).orElseThrow(()->new NotFoundException(Game.class.getSimpleName()));
+            if (inDb.getBlack()==null&&game.getBlack()!=null)inDb.setBlack(game.getBlack());
+            if (inDb.getWhite()==null&&game.getWhite()!=null)inDb.setWhite(game.getWhite());
+            if (inDb.getResult().equals(GAME_RESULT.NOT_PLAYED)&&game.getResult()!=null)inDb.setResult(game.getResult());
+            return new ResponseEntity<>(gameRepository.save(inDb), HttpStatusCode.valueOf(200));}
+        else
+            return new ResponseEntity<>(HttpStatusCode.valueOf(401));
     }
 
     public ResponseEntity<Void> deleteGameById(Long id) {
@@ -58,7 +61,7 @@ public class GameService {
         }
     }
 
-    public ResponseEntity<?> playGame(Long id){
+    public Game playGame(Long id){
         Game game=gameRepository.findById(id).orElseThrow(()->new NotFoundException(Game.class.getSimpleName()));
         if (((UserService.getCurrentLoggedInUser().getEmail().equals(game.getBlack().getEmail())||UserService.getCurrentLoggedInUser().getEmail().equals(game.getWhite().getEmail())&&game.getResult().equals(GAME_RESULT.NOT_PLAYED))||UserService.getCurrentLoggedInUser().getUserType().equals(USER_TYPE.ADMIN))){
             GAME_RESULT [] resultArr  = new GAME_RESULT[]{GAME_RESULT.DRAW,GAME_RESULT.BLACK_WON,GAME_RESULT.WHITE_WON};
@@ -85,14 +88,25 @@ public class GameService {
                         playerRepository.save(player);
                     }
             }
-            gameRepository.save(game);
-            HashMap<String,String> gameResultMap=new HashMap<>();
-            gameResultMap.put("Result",game.getResult().toString());
-            gameResultMap.put("Black",game.getBlack().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
-            gameResultMap.put("White",game.getWhite().getEmail().concat(", ").concat(game.getWhite().getRating().toString()));
-            return new ResponseEntity<>(gameResultMap,HttpStatusCode.valueOf(200));
+            return game;
         }
-        return new ResponseEntity<>(HttpStatusCode.valueOf(401));
+        throw new RuntimeException("Unauthorised");
+    }
+
+    public ResponseEntity<?> playAndSaveIndividualGame(Long gameId){
+        return saveGame(playGame(gameId));
+    }
+
+
+    public ResponseEntity<?> saveGame(Game game){
+        if (game==null)
+            return new ResponseEntity<>(HttpStatusCode.valueOf(400));
+        gameRepository.save(game);
+        HashMap<String,String> gameResultMap=new HashMap<>();
+        gameResultMap.put("Result",game.getResult().toString());
+        gameResultMap.put("Black",game.getBlack().getEmail().concat(", ").concat(game.getBlack().getRating().toString()));
+        gameResultMap.put("White",game.getWhite().getEmail().concat(", ").concat(game.getWhite().getRating().toString()));
+        return new ResponseEntity<>(gameResultMap,HttpStatusCode.valueOf(200));
     }
 
     private Player[] processGameResult(Player winner, Player loser, GAME_RESULT result){
@@ -104,17 +118,17 @@ public class GameService {
             diffEffect++;
         }
 
-            if (winner.getRating()>= loser.getRating()){
-                winner.setRating(winner.getRating()+change-diffEffect);
-                if (change-diffEffect>0)
-                    loser.setRating(loser.getRating()-change+diffEffect);
-                else
-                    loser.setRating(loser.getRating()-1);
-            }
-            else {
-                winner.setRating(winner.getRating()+change+diffEffect);
-                loser.setRating(loser.getRating()-change-diffEffect);
-            }
+        if (winner.getRating()>= loser.getRating()){
+            winner.setRating(winner.getRating()+change-diffEffect);
+            if (change-diffEffect>0)
+                loser.setRating(loser.getRating()-change+diffEffect);
+            else
+                loser.setRating(loser.getRating()-1);
+        }
+        else {
+            winner.setRating(winner.getRating()+change+diffEffect);
+            loser.setRating(loser.getRating()-change-diffEffect);
+        }
         return new Player[]{winner,loser};
     }
 }
