@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -33,7 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Service
 @Setter
 @Getter
-public class TournamentService {
+public class TournamentService <T> {
     @Autowired
     private ITournamentRepository tournamentRepository;
     @Autowired
@@ -95,7 +96,7 @@ public class TournamentService {
     }
 
     public ResponseEntity<?> advanceInTournament(Long id, Player lastGameWinner, boolean newJoinee) {
-            if (lastGameWinner.getUserType().equals(USER_TYPE.PLAYER)) {
+        if (lastGameWinner.getUserType().equals(USER_TYPE.PLAYER)) {
                 Tournament tournament = tournamentRepository.findById(id).orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
                 if (tournament.getNumberOfPlayersJoined() <= tournament.getNumberOfPlayers()) {
                     if (newJoinee&&tournament.getNumberOfPlayersJoined()+1<= tournament.getNumberOfPlayers()) {
@@ -105,28 +106,59 @@ public class TournamentService {
                         return new ResponseEntity<>(HttpStatusCode.valueOf(401));
                     }
 
-                    for (TournamentGame tgame : tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament)) {
-//                        gameLock.writeLock().lock();
-//                        try {
-                            if (tgame.getGame().getWhite() == null) {
-                                Game game = tgame.getGame();
-                                game.setWhite(lastGameWinner);
-                                gameRepository.save(game);
-                                return new ResponseEntity<>(HttpStatusCode.valueOf(200));
-                            } else if (tgame.getGame().getBlack() == null) {
-                                Game game = tgame.getGame();
-                                game.setBlack(lastGameWinner);
-                                gameRepository.save(game);
-                                return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+//                    for (TournamentGame tgame : tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament)) {
+//                            if (tgame.getGame().getWhite() == null) {
+//                                Game game = tgame.getGame();
+//                                game.setWhite(lastGameWinner);
+//                                Game savedGame=gameRepository.save(game);
+//                                tgame.setGame(savedGame);
+//                                TournamentGame savedTgame =tournamentGameRepository.save(tgame);
+//                                return (newJoinee) ?  new ResponseEntity<>(HttpStatusCode.valueOf(200)): new ResponseEntity<>(savedTgame,HttpStatusCode.valueOf(200));
+//                            } else if (tgame.getGame().getBlack() == null) {
+//                                Game game = tgame.getGame();
+//                                game.setBlack(lastGameWinner);
+//                                Game savedGame=gameRepository.save(game);
+//                                tgame.setGame(savedGame);
+//                                TournamentGame savedTgame =tournamentGameRepository.save(tgame);
+//                                return (newJoinee) ?  new ResponseEntity<>(HttpStatusCode.valueOf(200)): new ResponseEntity<>(savedTgame,HttpStatusCode.valueOf(200));
+//                            }
+//                    }
+
+                    List<TournamentGame> tournamentGames = tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament);
+                    for (int i = 0; i < tournamentGames.size(); i++) {
+                        TournamentGame tgame = tournamentGames.get(i);
+                        if (tgame.getGame().getWhite() == null) {
+                            tournamentGames.get(i).getGame().setWhite(lastGameWinner);
+                            tournamentGames.get(i).setGame(gameRepository.save(tournamentGames.get(i).getGame()));
+                            tournamentGames.set(i,tournamentGameRepository.save(tournamentGames.get(i)));
+                            tournament.setGames(tournamentGames);
+                            tournamentRepository.save(tournament);
+                            if (!newJoinee){
+                                Map<String, T> responseMap=new HashMap<>();
+                                Integer index =i;
+                                responseMap.put("index", (T) index);
+                                responseMap.put("tournamentGame", (T)tournamentGames.get(i));
+                                return new ResponseEntity<>(responseMap,HttpStatusCode.valueOf(200));
                             }
-//                        }
-//                        finally {
-//                            gameLock.writeLock().unlock();
-//                        }
+                            return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+                        } else if (tgame.getGame().getBlack() == null) {
+                            tournamentGames.get(i).getGame().setBlack(lastGameWinner);
+                            tournamentGames.get(i).setGame(gameRepository.save(tournamentGames.get(i).getGame()));
+                            tournamentGames.set(i,tournamentGameRepository.save(tournamentGames.get(i)));
+                            tournament.setGames(tournamentGames);
+                            tournamentRepository.save(tournament);
+                            System.out.println(tournamentGames);
+                            if (!newJoinee){
+                                Map<String, T> responseMap=new HashMap<>();
+                                Integer index =i;
+                                responseMap.put("index", (T) index);
+                                responseMap.put("tournamentGame", (T)tournamentGames.get(i));
+                                return new ResponseEntity<>(responseMap,HttpStatusCode.valueOf(200));
+                            }
+                            return new ResponseEntity<>(HttpStatusCode.valueOf(200));
+                        }
                     }
-
                 }
-
             }
         return new ResponseEntity<>(HttpStatusCode.valueOf(401));
     }
@@ -141,15 +173,25 @@ public class TournamentService {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(Tournament.class.getSimpleName()));
         if (tournament.getNumberOfPlayersJoined() == tournament.getNumberOfPlayers()&&tournament.getStatus().equals(TOURNAMENT_STATUS.PENDING_START)) {
-            ArrayList<HashMap<String, String>> gameResults = new ArrayList<>();
             List<TournamentGame> tournamentGames = tournamentGameRepository.findByTournamentOrderByGame_IdAsc(tournament);
+            ArrayList<HashMap<String, String>> gameResults = new ArrayList<>();
             int index = 0;
             for (int i = (tournament.getNumberOfPlayers() / 2); i >= 1; i /= 2) {
                 CopyOnWriteArrayList<Boolean> flags=new CopyOnWriteArrayList<>();
                 ExecutorService executorService = Executors.newFixedThreadPool(i);
                     for (int j = 0; j < i; j++) {
                         TournamentGame temp = tournamentGames.get(index + j);
-                        executorService.submit(new DelegatingSecurityContextRunnable(new ChessThread(this, temp, gameResults,flags), SecurityContextHolder.getContext()));
+                        if (temp.getGame().getBlack()==null){
+                            if (tournamentGames.get(index + j-1).getGame().getResult().equals(GAME_RESULT.BLACK_WON)&&tournamentGames.get(index + j-1).getGame().getBlack().getUserId()!=temp.getGame().getWhite().getUserId())
+                                temp.getGame().setBlack(tournamentGames.get(index + j-1).getGame().getBlack());
+                            else if (tournamentGames.get(index + j-1).getGame().getResult().equals(GAME_RESULT.WHITE_WON)&&tournamentGames.get(index + j-1).getGame().getWhite().getUserId()!=temp.getGame().getWhite().getUserId())
+                                temp.getGame().setBlack(tournamentGames.get(index + j-1).getGame().getWhite());
+                            else if (tournamentGames.get(index + j-2).getGame().getResult().equals(GAME_RESULT.BLACK_WON)&&tournamentGames.get(index + j-1).getGame().getBlack().getUserId()!=temp.getGame().getWhite().getUserId())
+                                temp.getGame().setBlack(tournamentGames.get(index + j-2).getGame().getBlack());
+                            else if (tournamentGames.get(index + j-2).getGame().getResult().equals(GAME_RESULT.WHITE_WON)&&tournamentGames.get(index + j-1).getGame().getWhite().getUserId()!=temp.getGame().getWhite().getUserId())
+                                temp.getGame().setBlack(tournamentGames.get(index + j-2).getGame().getWhite());
+                        }
+                        executorService.submit(new DelegatingSecurityContextRunnable(new ChessThread(this, temp, gameResults,flags,tournamentGames), SecurityContextHolder.getContext()));
                         try {
                             Thread.sleep(100);
                         } catch (InterruptedException e) {
@@ -165,7 +207,11 @@ public class TournamentService {
                             done=true;
                         }
                     }
-
+//                try {
+//                    Thread.sleep(5000);
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                }
             }
             tournament.setStatus(TOURNAMENT_STATUS.STARTED);
             tournamentRepository.save(tournament);
@@ -222,12 +268,12 @@ public class TournamentService {
                 for (int j=0; j<i; j++){
                     TournamentGame temp=tournamentGames.get(index+j);
                     SecurityContext context=SecurityContextHolder.getContext();
-                    Runnable task = new DelegatingSecurityContextRunnable(new ChessThread(this,temp,gameResults,new CopyOnWriteArrayList<>()),context );
+                    Runnable task = new DelegatingSecurityContextRunnable(new ChessThread(this,temp,gameResults,new CopyOnWriteArrayList<>(),tournamentGames),context );
                     new Thread(task).start();
                 }
                 index+=i;
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -252,7 +298,7 @@ public class TournamentService {
                 List<Callable<Object>> tasks = new ArrayList<>();
                 for (int j = 0; j < i; j++) {
                     TournamentGame temp = tournamentGames.get(index + j);
-                    tasks.add(Executors.callable(new DelegatingSecurityContextRunnable(new ChessThread(this, temp, gameResults,flags), SecurityContextHolder.getContext())));
+                    tasks.add(Executors.callable(new DelegatingSecurityContextRunnable(new ChessThread(this, temp, gameResults,flags,tournamentGames), SecurityContextHolder.getContext())));
                 }
                 index += i;
                 try {
@@ -298,7 +344,7 @@ public class TournamentService {
                 for (int j = 0; j < i; j++) {
                     TournamentGame temp = tournamentGames.get(index + j);
                     tasks.add(Executors.callable(new DelegatingSecurityContextRunnable(
-                            new ChessThread(this, temp, gameResults, new CopyOnWriteArrayList<>()), SecurityContextHolder.getContext())));
+                            new ChessThread(this, temp, gameResults, new CopyOnWriteArrayList<>(),tournamentGames), SecurityContextHolder.getContext())));
                 }
                 index += i;
 
