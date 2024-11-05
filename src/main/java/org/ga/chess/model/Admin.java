@@ -1,5 +1,6 @@
 package org.ga.chess.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,6 +26,7 @@ public class Admin extends User{
         this.tournaments = tournaments;
     }
 
+    @JsonIgnore
     @OneToMany(mappedBy = "organiser", orphanRemoval = true)
     private List<Tournament> tournaments;
 
