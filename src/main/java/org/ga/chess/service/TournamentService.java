@@ -171,7 +171,7 @@ public class TournamentService {
             tournamentRepository.save(tournament);
             return new ResponseEntity<>(gameResults, HttpStatusCode.valueOf(200));
         } else {
-            return new ResponseEntity<>("Tournament is not full", HttpStatusCode.valueOf(401));
+            return new ResponseEntity<>(HttpStatusCode.valueOf(401));
         }
     }
     public ResponseEntity<?> playTournamentWithoutThreads(Long id){
