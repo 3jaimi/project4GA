@@ -8,6 +8,8 @@ This is a chess management app, where useres can be players and admins. admins c
 
 # ERD
 You can find the ERD here:
+
+
 ![image](https://github.com/user-attachments/assets/ecf833d7-b284-472d-b137-51a74b1d99d7)
 
 
